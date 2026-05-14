@@ -53,25 +53,43 @@ Rules:
 5. Give specific phrases Akshay can say.
 6. Make responses playful and occasionally hilarious.
 """
-    
+
+
+def get_gemini_api_key():
+    """
+    Look for GEMINI_API_KEY in several locations.
+    """
+    # 1. Streamlit secrets
+    try:
+        if "GEMINI_API_KEY" in st.secrets:
+            return st.secrets["GEMINI_API_KEY"]
+    except Exception:
+        pass
+
+    # 2. Environment variables
+    if os.getenv("GEMINI_API_KEY"):
+        return os.getenv("GEMINI_API_KEY")
+
+    # 3. Alternative variable names (optional fallback)
+    if os.getenv("GOOGLE_API_KEY"):
+        return os.getenv("GOOGLE_API_KEY")
+
+    return None
+
 
 def generate_answer(question: str) -> str:
-    """
-    Generate a Hindi response using Gemini.
-    Reads GEMINI_API_KEY from Streamlit Secrets or environment variables.
-    """
-    api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+    api_key = get_gemini_api_key()
 
     if not api_key:
         return (
             "GEMINI_API_KEY सेट नहीं है। "
-            "कृपया Streamlit Secrets में GEMINI_API_KEY जोड़ें।"
+            "Streamlit Cloud में Settings → Secrets खोलें और यह जोड़ें:\n\n"
+            'GEMINI_API_KEY = "your_api_key_here"'
         )
 
     try:
         genai.configure(api_key=api_key)
 
-        # Recommended fast, low-cost Gemini model
         model = genai.GenerativeModel("gemini-2.5-flash")
 
         response = model.generate_content([
@@ -79,16 +97,18 @@ def generate_answer(question: str) -> str:
             f"Akshay's question: {question}"
         ])
 
-        return response.text.strip()
+        if hasattr(response, "text") and response.text:
+            return response.text.strip()
+
+        return "मुझे अभी कोई उत्तर नहीं मिला। कृपया दोबारा प्रयास करें।"
 
     except Exception as e:
-        return f"एक त्रुटि हुई: {str(e)}"
+        return f"Gemini API error: {str(e)}"
 
 
 def transcribe_audio(audio_bytes: bytes) -> str:
     """
-    Transcription is not needed when using streamlit_mic_recorder.speech_to_text(),
-    because that component already returns recognized text directly.
-    This function is kept so app.py imports continue to work.
+    Placeholder function kept for compatibility with app.py.
+    The speech_to_text() component already returns text directly.
     """
-    return ""
+    retu
