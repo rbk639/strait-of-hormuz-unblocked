@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_mic_recorder import speech_to_text
 from utils.assistant import generate_answer, text_to_speech
 
 # --------------------------------------------------
@@ -21,7 +22,7 @@ st.markdown("""
 }
 
 .main-card {
-    background: rgba(20, 10, 35, 0.90);
+    background: rgba(20, 10, 35, 0.92);
     border: 1px solid rgba(212, 175, 55, 0.35);
     border-radius: 30px;
     padding: 2.5rem;
@@ -57,32 +58,9 @@ st.markdown("""
     color: #ffffff;
 }
 
-.stAudio {
-    margin-top: 1rem;
-}
-
-/* Large mobile-friendly button */
-div.stButton > button {
-    width: 100%;
-    min-height: 80px;
-    border-radius: 24px;
-    border: 2px solid #D4AF37;
-    background: linear-gradient(135deg, #1a1028 0%, #2d1b45 100%);
-    color: #D4AF37;
-    font-size: 1.4rem;
-    font-weight: 700;
-    box-shadow: 0 0 25px rgba(212, 175, 55, 0.15);
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-}
-
-div.stButton > button:hover {
-    border-color: #f4d76a;
-}
-
-div.stButton > button:active {
-    transform: scale(0.98);
+/* Hide the transcribed text box shown by the component */
+textarea, input[type="text"] {
+    display: none !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -103,36 +81,39 @@ st.markdown(
 )
 
 # --------------------------------------------------
-# Mobile-Friendly Record Button
+# Real Microphone Button (works on mobile and desktop)
 # --------------------------------------------------
-if st.button("🎙️ Tap to Ask", use_container_width=True):
-    # Ask for voice input using the browser's native speech recognition
-    question = st.chat_input(
-        "Speak your question using the microphone on your keyboard."
+question = speech_to_text(
+    language="hi-IN",
+    start_prompt="🎙️ Tap to Ask",
+    stop_prompt="⏹️ Stop Recording",
+    just_once=True,
+    use_container_width=True,
+    key="voice_input"
+)
+
+# --------------------------------------------------
+# Automatically Generate Response
+# --------------------------------------------------
+if question and question.strip():
+    with st.spinner("Consulting the heart..."):
+        answer = generate_answer(question)
+
+    # Display text answer
+    st.markdown(
+        f'<div class="response">{answer}</div>',
+        unsafe_allow_html=True
     )
 
-    # If speech was captured, generate the response
-    if question:
-        with st.spinner("Consulting the heart..."):
-            answer = generate_answer(question)
+    # Convert to speech and autoplay
+    try:
+        audio_path = text_to_speech(answer)
+        with open(audio_path, "rb") as f:
+            st.audio(f.read(), format="audio/mp3", autoplay=True)
+    except Exception as e:
+        st.warning(f"Audio playback error: {e}")
 
-        # Show text response
-        st.markdown(
-            f'<div class="response">{answer}</div>',
-            unsafe_allow_html=True
-        )
-
-        # Generate and autoplay Hindi audio
-        try:
-            audio_path = text_to_speech(answer)
-
-            with open(audio_path, "rb") as audio_file:
-                st.audio(
-                    audio_file.read(),
-                    format="audio/mp3",
-                    autoplay=True
-                )
-        except Exception as e:
-            st.warning(f"Audio playback error: {e}")
-
+# --------------------------------------------------
+# Close Main Card
+# --------------------------------------------------
 st.markdown('</div>', unsafe_allow_html=True)
