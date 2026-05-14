@@ -1,6 +1,9 @@
 import json
 import os
+import tempfile
+
 import google.generativeai as genai
+from openai import OpenAI
 
 
 def load_profile():
@@ -45,11 +48,40 @@ def generate_answer(question: str) -> str:
 
     model = genai.GenerativeModel("gemini-2.5-flash")
 
-    response = model.generate_content(
-        [
-            build_system_prompt(),
-            f"User question: {question}"
-        ]
-    )
+    response = model.generate_content([
+        build_system_prompt(),
+        f"User question: {question}"
+    ])
 
     return response.text.strip()
+
+
+def transcribe_audio(audio_bytes: bytes) -> str:
+    """
+    Transcribe Hindi speech using OpenAI Whisper.
+    Requires OPENAI_API_KEY in Streamlit secrets.
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return ""
+
+    try:
+        client = OpenAI(api_key=api_key)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = tmp.name
+
+        with open(tmp_path, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                language="hi"
+            )
+
+        os.remove(tmp_path)
+
+        return transcript.text.strip()
+
+    except Exception:
+        return ""
