@@ -2,11 +2,9 @@ import streamlit as st
 from utils.assistant import generate_answer, transcribe_audio
 
 try:
-    from streamlit_mic_recorder import mic_recorder
-except Exception:
-    mic_recorder = None
-
-PASSWORD = "151190"
+    from streamlit_mic_recorder import speech_to_text
+except ImportError:
+    speech_to_text = None
 
 st.set_page_config(
     page_title="Strait of Hormuz - Unblocked",
@@ -18,15 +16,18 @@ st.markdown("""
 <style>
 .stApp {
     background: linear-gradient(180deg, #000000 0%, #0d061a 100%);
-    color: #ffffff;
+    color: white;
 }
+
 .main-card {
-    background: rgba(20, 10, 35, 0.85);
+    background: rgba(20, 10, 35, 0.90);
     border: 1px solid rgba(212, 175, 55, 0.35);
-    border-radius: 28px;
+    border-radius: 30px;
     padding: 2.5rem;
-    box-shadow: 0 0 40px rgba(212, 175, 55, 0.12);
+    box-shadow: 0 0 40px rgba(212, 175, 55, 0.15);
+    margin-top: 2rem;
 }
+
 .title {
     text-align: center;
     font-size: 2.6rem;
@@ -34,74 +35,49 @@ st.markdown("""
     color: #D4AF37;
     margin-bottom: 2rem;
 }
+
 .response {
     background: rgba(255,255,255,0.04);
     border-left: 4px solid #D4AF37;
     border-radius: 16px;
-    padding: 1.2rem;
-    margin-top: 1.5rem;
-    font-size: 1.05rem;
+    padding: 1.5rem;
+    margin-top: 2rem;
     line-height: 1.8;
+    font-size: 1.05rem;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Authentication
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-if not st.session_state.authenticated:
-    st.markdown('<div class="main-card">', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="title">Strait of Hormuz - Unblocked</div>',
-        unsafe_allow_html=True
-    )
-    password = st.text_input("Enter Password", type="password")
-    if st.button("Unlock 💜", use_container_width=True):
-        if password == PASSWORD:
-            st.session_state.authenticated = True
-            st.rerun()
-        else:
-            st.error("Incorrect password.")
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.stop()
-
-# Main App
 st.markdown('<div class="main-card">', unsafe_allow_html=True)
 st.markdown(
     '<div class="title">Strait of Hormuz - Unblocked</div>',
     unsafe_allow_html=True
 )
 
-if mic_recorder:
-    audio = mic_recorder(
-        start_prompt="🎙️ Ask Your Question",
-        stop_prompt="⏹️ Stop Recording",
-        just_once=True,
-        use_container_width=True,
-        format="webm",
-        key="mic"
-    )
-
-    # Automatically process audio and generate answer
-    if audio and audio.get("bytes"):
-        with st.spinner("Listening to your heart..."):
-            question = transcribe_audio(audio["bytes"])
-
-        if question:
-            with st.spinner("Consulting the heart..."):
-                answer = generate_answer(question)
-
-            st.markdown(
-                f'<div class="response">{answer}</div>',
-                unsafe_allow_html=True
-            )
-        else:
-            st.warning("Could not understand the audio. Please try again.")
-else:
+if speech_to_text is None:
     st.error(
-        "Microphone component is not installed. "
-        "Please install streamlit-mic-recorder."
+        "Microphone component not installed. "
+        "Run: pip install streamlit-mic-recorder"
     )
+else:
+    # This component works better across mobile and desktop.
+    question = speech_to_text(
+        language="hi",
+        start_prompt="🎙️ Tap to Ask",
+        stop_prompt="⏹️ Stop Recording",
+        use_container_width=True,
+        just_once=True,
+        key="voice_input"
+    )
+
+    # Automatically generate answer when speech is captured.
+    if question:
+        with st.spinner("Consulting the heart..."):
+            answer = generate_answer(question)
+
+        st.markdown(
+            f'<div class="response">{answer}</div>',
+            unsafe_allow_html=True
+        )
 
 st.markdown('</div>', unsafe_allow_html=True)
